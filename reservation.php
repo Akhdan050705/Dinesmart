@@ -32,7 +32,8 @@ if(isset($_POST['find_table'])) {
 ?>
 
 <div class="auth-wrapper">
-    <div class="auth-card" style="width: 600px;"> <h2 class="auth-title">RESERVATION</h2>
+    <div class="auth-card" style="width: 600px;">
+        <h2 class="auth-title">RESERVATION</h2>
         <p class="auth-subtitle">Let's Start Your Dinner With Us</p>
 
         <form method="POST" class="auth-form">
@@ -40,33 +41,39 @@ if(isset($_POST['find_table'])) {
             <input type="text" name="phone" placeholder="Phone Number" value="<?php echo $phone_val; ?>" required>
 
             <div class="reservation-form-grid">
-                <div class="form-group">
+                
+                <div>
+                    <label style="font-size:12px; font-weight:600; color:#888; margin-left:5px;">Date</label>
                     <input type="date" name="date" required min="<?php echo date('Y-m-d'); ?>">
                 </div>
                 
-                <div class="form-group">
-                    <select name="time" required>
-                        <option value="" disabled selected>Time</option>
+                <div>
+                    <label style="font-size:12px; font-weight:600; color:#888; margin-left:5px;">Time</label>
+                    <select name="time" required class="custom-select">
+                        <option value="" disabled selected>Select Time</option>
                         <?php 
-                        for($i=11; $i<=21; $i++) {
-                            echo "<option value='{$i}:00'>{$i}:00</option>";
-                            echo "<option value='{$i}:30'>{$i}:30</option>";
+                        // REVISI: Loop dari jam 11 sampai 20, step 1 jam
+                        for($i=11; $i<=20; $i++) {
+                            // Format 2 digit (misal 9 jadi 09, tapi karena mulai 11 aman)
+                            $time_str = sprintf("%02d:00", $i);
+                            echo "<option value='$time_str'>$time_str</option>";
                         }
                         ?>
                     </select>
                 </div>
-                
-                <div class="form-group">
-                    <select name="people" required>
-                        <option value="" disabled selected>People</option>
+
+                <div class="full-width">
+                    <label style="font-size:12px; font-weight:600; color:#888; margin-left:5px;">Total People</label>
+                    <select name="people" required class="custom-select">
+                        <option value="" disabled selected>How many people?</option>
                         <?php for($p=1; $p<=10; $p++): ?>
-                            <option value="<?php echo $p; ?>"><?php echo $p; ?> Person</option>
+                            <option value="<?php echo $p; ?>"><?php echo $p; ?> Person<?php echo ($p > 1) ? 's' : ''; ?></option>
                         <?php endfor; ?>
                     </select>
                 </div>
             </div>
 
-            <button type="submit" name="find_table" class="btn-orange">FIND TABLE</button>
+            <button type="submit" name="find_table" class="btn-orange" style="margin-top:10px;">FIND TABLE</button>
         </form>
     </div>
 </div>

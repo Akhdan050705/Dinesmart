@@ -1,19 +1,21 @@
 <?php
 include 'header.php';
+include 'config.php';
 
-// Proteksi: Jika belum isi form tahap 1, tendang balik
-if(!isset($_SESSION['temp_booking'])) {
-    header("Location: reservation.php");
+// Proteksi: Jika tidak ada data reschedule di session, tendang balik
+if(!isset($_SESSION['reschedule_data'])) {
+    header("Location: profile.php");
     exit();
 }
 
-// Ambil jumlah orang dari session
-$people_count = $_SESSION['temp_booking']['people'];
+// Ambil data dari session
+$r_data = $_SESSION['reschedule_data'];
+$people_count = $r_data['people'];
 
-// --- LOGIKA FILTER MEJA ---
-// Default: Tampilkan semua
+// --- LOGIKA FILTER MEJA (Sama seperti reservation) ---
 $show_small_tables = true;
 $show_large_tables = true;
+$filter_msg = "";
 
 if ($people_count >= 5) {
     // Jika 5 orang atau lebih -> HANYA Tampilkan Meja Besar
@@ -26,18 +28,49 @@ if ($people_count >= 5) {
     $show_small_tables = true;
     $filter_msg = "Showing tables suitable for small groups (1-4 people)";
 }
+
+// PROSES UPDATE DATABASE
+if(isset($_POST['confirm_reschedule'])) {
+    $res_id = $r_data['id'];
+    $new_date = $r_data['date'];
+    $new_time = $r_data['time'];
+    $new_people = $r_data['people'];
+    $new_table = $_POST['table_no']; 
+
+    // Query UPDATE
+    $sql = "UPDATE reservations SET 
+            reservation_date = '$new_date', 
+            reservation_time = '$new_time', 
+            guests = '$new_people', 
+            table_number = '$new_table',
+            status = 'Reserved' 
+            WHERE id = '$res_id'"; 
+            
+    if($conn->query($sql)) {
+        unset($_SESSION['reschedule_data']); // Hapus session
+        echo "<script>alert('Reschedule Successful!'); window.location='profile.php';</script>";
+        exit();
+    } else {
+        echo "<script>alert('Error: " . $conn->error . "');</script>";
+    }
+}
 ?>
 
 <div class="auth-wrapper">
     <div class="auth-card" style="width: 700px;">
-        <h2 class="auth-title" style="border:none; font-size:24px;">CHOOSE YOUR TABLE</h2>
-        <p class="auth-subtitle">Let's Start Your Dinner With Us</p>
+        <h2 class="auth-title" style="border:none; font-size:24px;">CONFIRM NEW TABLE</h2>
         
+        <div style="text-align:center; margin-bottom:15px; color:#555;">
+            Date: <b><?php echo date('d M Y', strtotime($r_data['date'])); ?></b> | 
+            Time: <b><?php echo $r_data['time']; ?></b> |
+            Guests: <b><?php echo $people_count; ?> Pax</b>
+        </div>
+
         <p style="text-align:center; color:#F2994A; font-size:14px; margin-bottom:20px; font-weight:bold;">
             <i class="fas fa-info-circle"></i> <?php echo $filter_msg; ?>
         </p>
         
-        <form action="booking_success.php" method="POST">
+        <form method="POST">
             <div class="table-grid">
                 
                 <?php if($show_large_tables): ?>
@@ -49,7 +82,7 @@ if ($people_count >= 5) {
                             <div class="chair c-top"></div>
                             <div class="chair c-bottom"></div>
                         </div>
-                        <div style="text-align:center; font-size:12px; margin-top:5px; color:#888;"></div>
+                        <div style="text-align:center; font-size:12px; margin-top:5px; color:#888;">Capacity: 8 Pax</div>
                     </label>
                 </div>
                 <?php endif; ?>
@@ -65,7 +98,7 @@ if ($people_count >= 5) {
                             <div class="chair c-left"></div>
                             <div class="chair c-right"></div>
                         </div>
-                        <div style="text-align:center; font-size:12px; margin-top:5px; color:#888;"></div>
+                        <div style="text-align:center; font-size:12px; margin-top:5px; color:#888;">Capacity: 4 Pax</div>
                     </label>
                 </div>
 
@@ -79,7 +112,7 @@ if ($people_count >= 5) {
                             <div class="chair c-left"></div>
                             <div class="chair c-right"></div>
                         </div>
-                        <div style="text-align:center; font-size:12px; margin-top:5px; color:#888;"></div>
+                        <div style="text-align:center; font-size:12px; margin-top:5px; color:#888;">Capacity: 4 Pax</div>
                     </label>
                 </div>
 
@@ -91,7 +124,7 @@ if ($people_count >= 5) {
                             <div class="chair c-top"></div>
                             <div class="chair c-bottom"></div>
                         </div>
-                        <div style="text-align:center; font-size:12px; margin-top:5px; color:#888;"></div>
+                        <div style="text-align:center; font-size:12px; margin-top:5px; color:#888;">Capacity: 2 Pax</div>
                     </label>
                 </div>
                 <?php endif; ?>
@@ -99,10 +132,9 @@ if ($people_count >= 5) {
             </div>
 
             <div style="display:flex; gap:10px; margin-top:20px;">
-                <a href="reservation.php" class="btn" style="background:#ccc; color:#333; text-decoration:none; flex:1; text-align:center; border-radius:5px; padding:12px; font-weight:bold;">BACK</a>
-                <button type="submit" name="confirm_booking" class="btn-orange" style="flex:1;">RESERVE</button>
+                <a href="reschedule.php?id=<?php echo $r_data['id']; ?>" class="btn" style="background:#ccc; color:#333; text-decoration:none; flex:1; text-align:center; border-radius:5px; padding:12px; font-weight:bold;">BACK</a>
+                <button type="submit" name="confirm_reschedule" class="btn-orange" style="flex:1;">CONFIRM RESCHEDULE</button>
             </div>
-            
         </form>
     </div>
 </div>

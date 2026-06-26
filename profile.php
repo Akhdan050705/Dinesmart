@@ -1,47 +1,47 @@
 <?php
 include 'config.php';
-// Header sudah ada session_start(), jadi include saja
-// Namun kita perlu cek apakah user login SEBELUM render HTML
+
+// Cek Session
 session_start();
 if (!isset($_SESSION['user'])) {
     header("Location: user_login.php");
     exit();
 }
 
-// 1. Logic Update Biodata
-$msg = "";
 $user_id = $_SESSION['user_id'];
+$msg = "";
 
+// --- LOGIC 1: UPDATE BIODATA ---
 if (isset($_POST['update_profile'])) {
     $name = mysqli_real_escape_string($conn, $_POST['name']);
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $mobile = mysqli_real_escape_string($conn, $_POST['mobile']);
 
     $update_sql = "UPDATE customers SET name='$name', email='$email', mobile_no='$mobile' WHERE id='$user_id'";
-    
     if ($conn->query($update_sql)) {
-        $_SESSION['user'] = $name; // Update nama di session juga
-        $msg = "<p style='color:green'>Data successfully updated!</p>";
+        $_SESSION['user'] = $name;
+        $msg = "<p style='color:green; font-size:14px;'>Data successfully updated!</p>";
     } else {
-        $msg = "<p style='color:red'>Error updating data.</p>";
+        $msg = "<p style='color:red; font-size:14px;'>Error updating data.</p>";
     }
 }
 
-// 2. Ambil Data User Terbaru
+// --- LOGIC 2: BATALKAN RESERVASI ---
+if (isset($_POST['cancel_booking'])) {
+    $res_id = $_POST['res_id'];
+    $cancel_sql = "UPDATE reservations SET status='Cancelled' WHERE id='$res_id' AND customer_id='$user_id'";
+    if($conn->query($cancel_sql)){
+        echo "<script>alert('Reservation has been cancelled.'); window.location='profile.php';</script>";
+    }
+}
+
+// Ambil Data User Terbaru
 $user_sql = "SELECT * FROM customers WHERE id='$user_id'";
 $user_data = $conn->query($user_sql)->fetch_assoc();
 
-// 3. Ambil Data History Reservasi
-// Kita asumsikan saat booking nanti, customer_id disimpan di tabel reservations
+// Ambil Data History Reservasi
 $history_sql = "SELECT * FROM reservations WHERE customer_id='$user_id' ORDER BY reservation_date DESC";
 $history_res = $conn->query($history_sql);
-
-// Baru include header setelah logic di atas (karena header ada output HTML)
-// Note: Karena header.php saya sebelumnya ada session_start(), 
-// pastikan tidak double session_start.
-// Solusi: Edit header.php agar session_start() hanya dipanggil jika belum aktif, 
-// ATAU hapus session_start() di file ini dan biarkan header.php yg handle.
-// Supaya aman, kita include header di bawah tapi logic redirect di atas tetap jalan.
 ?>
 
 <?php include 'header.php'; ?> 
@@ -66,27 +66,36 @@ $history_res = $conn->query($history_sql);
         </form>
     </div>
 
-    <div class="history-card">
-        <h3 class="profile-title">Reservation History</h3>
+    <div class="history-card" style="flex:2.5;"> <h3 class="profile-title">Reservation History</h3>
         
         <?php if ($history_res->num_rows > 0): ?>
         <table class="history-table">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Guests</th>
-                    <th>Table No</th>
+                    <th>Booking Code</th>
+                    <th>Date & Time</th>
+                    <th>Table</th>
                     <th>Status</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
                 <?php while($row = $history_res->fetch_assoc()): ?>
                 <tr>
-                    <td><?php echo date('d M Y', strtotime($row['reservation_date'])); ?></td>
-                    <td><?php echo date('H:i', strtotime($row['reservation_time'])); ?></td>
-                    <td><?php echo $row['guests']; ?> Pax</td>
-                    <td><?php echo $row['table_number'] ? $row['table_number'] : '-'; ?></td>
+                    <td style="font-weight:bold; color:var(--primary-orange);">
+                        #<?php echo !empty($row['booking_code']) ? $row['booking_code'] : $row['id']; ?>
+                    </td>
+
+                    <td>
+                        <?php echo date('d M Y', strtotime($row['reservation_date'])); ?><br>
+                        <small style="color:#888"><?php echo date('H:i', strtotime($row['reservation_time'])); ?></small>
+                    </td>
+
+                    <td>
+                        No. <?php echo $row['table_number']; ?> <br>
+                        <small style="color:#888"><?php echo $row['guests']; ?> Pax</small>
+                    </td>
+
                     <td>
                         <?php 
                         $status = $row['status'];
@@ -97,13 +106,36 @@ $history_res = $conn->query($history_sql);
                         ?>
                         <span class="badge <?php echo $badgeClass; ?>"><?php echo $status; ?></span>
                     </td>
+
+                    <td>
+                        <?php 
+                        $res_date = $row['reservation_date'];
+                        $today = date('Y-m-d');
+                        
+                        if($status == 'Reserved' && $res_date >= $today): 
+                        ?>
+                            <a href="reschedule.php?id=<?php echo $row['id']; ?>" class="btn-action btn-reschedule" title="Reschedule Booking">
+                                <i class="fas fa-calendar-alt"></i>
+                            </a>
+
+                            <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure want to cancel this booking?');">
+                                <input type="hidden" name="res_id" value="<?php echo $row['id']; ?>">
+                                <button type="submit" name="cancel_booking" class="btn-action btn-cancel" title="Cancel Booking">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </form>
+
+                        <?php else: ?>
+                            <span style="color:#ccc; font-size:12px;">-</span>
+                        <?php endif; ?>
+                    </td>
                 </tr>
                 <?php endwhile; ?>
             </tbody>
         </table>
         <?php else: ?>
             <p style="color:#888; margin-top:10px;">You haven't made any reservations yet.</p>
-            <a href="#" class="btn-orange" style="margin-top:20px; display:inline-block; width:auto; font-size:12px;">Book Now</a>
+            <a href="reservation.php" class="btn-orange" style="margin-top:20px; display:inline-block; width:auto; font-size:12px;">Book Now</a>
         <?php endif; ?>
     </div>
 

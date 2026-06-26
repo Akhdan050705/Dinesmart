@@ -42,7 +42,7 @@ $check_result = $conn->query($check_sql);
                 
                 if($result->num_rows > 0): 
             ?>
-                <h2 class="menu-category-title"><?php echo $cat; ?>s</h2>
+                <h2 class="menu-category-title" id="<?php echo $cat; ?>"><?php echo $cat; ?>s</h2>
                 
                 <div class="menu-items-grid">
                     <?php while($row = $result->fetch_assoc()): ?>
